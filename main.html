@@ -1,0 +1,499 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Remote Work Meme Generator</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #f0f2f5;
+        }
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        .fade-in {
+            animation: fadeIn 0.6s ease-out forwards;
+        }
+        .loader {
+            border: 4px solid #e5e7eb;
+            border-top: 4px solid #4f46e5;
+            border-radius: 50%;
+            width: 40px;
+            height: 40px;
+            animation: spin 1s linear infinite;
+        }
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+        @keyframes pulse {
+            0%, 100% { box-shadow: 0 0 0 0 rgba(79, 70, 229, 0.7); }
+            70% { box-shadow: 0 0 0 10px rgba(79, 70, 229, 0); }
+        }
+        .btn-primary {
+            animation: pulse 2s infinite;
+        }
+        .template-img {
+            cursor: pointer;
+            border: 3px solid transparent;
+            transition: all 0.2s ease-in-out;
+            border-radius: 0.5rem;
+        }
+        .template-img:hover {
+            transform: scale(1.05);
+            border-color: rgba(99, 102, 241, 0.5);
+        }
+        .template-img.selected {
+            border-color: #4f46e5;
+            box-shadow: 0 0 0 4px rgba(79, 70, 229, 0.4);
+            transform: scale(1.03);
+        }
+        #notification {
+            position: fixed;
+            top: -100px;
+            left: 50%;
+            transform: translateX(-50%);
+            padding: 1rem 2rem;
+            border-radius: 0.5rem;
+            color: white;
+            z-index: 1000;
+            transition: top 0.5s ease-in-out;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.2);
+            font-weight: 500;
+        }
+        #notification.show {
+            top: 20px;
+        }
+        #notification.error {
+            background-color: #ef4444;
+        }
+        #notification.success {
+            background-color: #22c55e;
+        }
+        /* Custom range slider */
+        input[type=range] {
+            -webkit-appearance: none;
+            width: 100%;
+            background: transparent;
+        }
+        input[type=range]::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            height: 20px;
+            width: 20px;
+            border-radius: 50%;
+            background: #4f46e5;
+            cursor: pointer;
+            margin-top: -8px;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.2);
+        }
+        input[type=range]::-moz-range-thumb {
+            height: 20px;
+            width: 20px;
+            border-radius: 50%;
+            background: #4f46e5;
+            cursor: pointer;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.2);
+        }
+        input[type=range]::-webkit-slider-runnable-track {
+            width: 100%;
+            height: 4px;
+            cursor: pointer;
+            background: #d1d5db;
+            border-radius: 5px;
+        }
+        /* Interactive Tilt Effect */
+        .canvas-wrapper {
+            perspective: 1000px;
+        }
+        #meme-canvas {
+            transition: transform 0.1s ease-out;
+        }
+        .btn:active {
+            transform: scale(0.95);
+            transition: transform 0.1s ease;
+        }
+    </style>
+</head>
+<body class="text-gray-800">
+    <div id="notification"></div>
+    
+    <!-- Header/Menu Bar -->
+    <nav class="bg-white shadow-md sticky top-0 z-50">
+        <div class="container mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="flex items-center justify-between h-16">
+                <div class="flex items-center">
+                    <svg class="h-8 w-8 text-indigo-600" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14.828 14.828a4 4 0 01-5.656 0M9 10h.01M15 10h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                    </svg>
+                    <span class="ml-3 text-2xl font-extrabold text-gray-900 tracking-tight">MemeGen AI</span>
+                </div>
+            </div>
+        </div>
+    </nav>
+
+    <div class="container mx-auto p-4 md:p-8">
+        <main class="grid grid-cols-1 lg:grid-cols-5 gap-8">
+            <!-- Controls Column -->
+            <div class="lg:col-span-2 bg-white p-6 rounded-2xl shadow-lg">
+                <div class="space-y-8">
+                    <!-- Section 1: AI Generation -->
+                    <div class="fade-in" style="animation-delay: 0.2s;">
+                        <h2 class="text-xl font-bold mb-4 flex items-center"><svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 mr-2 text-indigo-500" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z" /></svg>1. Generate with AI</h2>
+                        <label for="prompt" class="block text-sm font-medium text-gray-600 mb-1">Enter a meme idea</label>
+                        <input type="text" id="prompt" class="mt-1 block w-full rounded-lg border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm" placeholder="e.g., 'My cat walking on my keyboard'">
+                        <button id="generate-btn" class="btn btn-primary mt-3 w-full bg-indigo-600 text-white font-bold py-2.5 px-4 rounded-lg hover:bg-indigo-700 transition-all duration-300 flex items-center justify-center transform hover:scale-105">
+                            <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 mr-2" viewBox="0 0 20 20" fill="currentColor"><path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z" /></svg>
+                            Generate Meme
+                        </button>
+                        <div id="loader" class="hidden mx-auto mt-4 loader"></div>
+                    </div>
+                    
+                    <!-- Section 2: Templates & Upload -->
+                    <div class="fade-in" style="animation-delay: 0.4s;">
+                        <h2 class="text-xl font-bold mb-4 flex items-center"><svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 mr-2 text-indigo-500" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2V6zM14 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2V6zM4 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2v-2zM14 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2v-2z" /></svg>2. Choose a Base Image</h2>
+                        <div id="templates" class="grid grid-cols-3 gap-3 mb-4">
+                            <!-- Templates will be injected here by JS -->
+                        </div>
+                         <label for="image-upload" class="btn w-full bg-gray-200 text-gray-700 font-bold py-2.5 px-4 rounded-lg hover:bg-gray-300 transition-all duration-300 flex items-center justify-center transform hover:scale-105 cursor-pointer">
+                            <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 mr-2" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M3 17a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1zM6.293 6.707a1 1 0 010-1.414l3-3a1 1 0 011.414 0l3 3a1 1 0 01-1.414 1.414L11 5.414V13a1 1 0 11-2 0V5.414L7.707 6.707a1 1 0 01-1.414 0z" clip-rule="evenodd" /></svg>
+                            Upload Your Own
+                        </label>
+                        <input type="file" id="image-upload" class="hidden" accept="image/png, image/jpeg">
+                    </div>
+
+                    <!-- Section 3: Customization -->
+                    <div class="fade-in" style="animation-delay: 0.6s;">
+                        <h2 class="text-xl font-bold mb-4 flex items-center"><svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 mr-2 text-indigo-500" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" /></svg>3. Customize Text</h2>
+                        <div class="space-y-4">
+                            <div>
+                                <label for="top-text" class="block text-sm font-medium text-gray-600">Top Text</label>
+                                <input type="text" id="top-text" class="mt-1 block w-full rounded-lg border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm" placeholder="Top caption">
+                            </div>
+                            <div>
+                                <label for="bottom-text" class="block text-sm font-medium text-gray-600">Bottom Text</label>
+                                <input type="text" id="bottom-text" class="mt-1 block w-full rounded-lg border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm" placeholder="Bottom caption">
+                            </div>
+                            <div>
+                                <label for="font-size" class="block text-sm font-medium text-gray-600">Font Size: <span id="font-size-value" class="font-bold">48</span>px</label>
+                                <input type="range" id="font-size" min="20" max="100" value="48" class="w-full h-2 bg-gray-300 rounded-lg appearance-none cursor-pointer">
+                            </div>
+                            <div>
+                                <label for="font-color" class="block text-sm font-medium text-gray-600">Font Color</label>
+                                <input type="color" id="font-color" value="#FFFFFF" class="mt-1 block w-full h-10 rounded-lg border-gray-300 shadow-sm cursor-pointer p-1">
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Canvas and Actions Column -->
+            <div class="lg:col-span-3 fade-in" style="animation-delay: 0.4s;">
+                 <div class="bg-white p-6 rounded-2xl shadow-lg h-full flex flex-col sticky top-24">
+                    <div id="canvas-wrapper" class="canvas-wrapper flex-grow flex items-center justify-center bg-gray-100 rounded-xl p-2">
+                        <canvas id="meme-canvas" class="max-w-full h-auto rounded-lg"></canvas>
+                    </div>
+                    <div class="mt-6 flex flex-col sm:flex-row gap-4 justify-center">
+                        <button id="download-btn" class="btn w-full sm:w-auto bg-green-600 text-white font-bold py-3 px-6 rounded-lg hover:bg-green-700 transition-all duration-300 flex items-center justify-center transform hover:scale-105">
+                             <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 mr-2" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M3 17a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1zm3.293-7.707a1 1 0 011.414 0L9 10.586V3a1 1 0 112 0v7.586l1.293-1.293a1 1 0 111.414 1.414l-3 3a1 1 0 01-1.414 0l-3-3a1 1 0 010-1.414z" clip-rule="evenodd" /></svg>
+                            Download
+                        </button>
+                        <button id="share-btn" class="btn w-full sm:w-auto bg-purple-600 text-white font-bold py-3 px-6 rounded-lg hover:bg-purple-700 transition-all duration-300 flex items-center justify-center transform hover:scale-105">
+                           <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 mr-2" viewBox="0 0 20 20" fill="currentColor"><path d="M15 8a3 3 0 10-2.977-2.63l-4.94 2.47a3 3 0 100 4.319l4.94 2.47a3 3 0 10.895-1.789l-4.94-2.47a3.027 3.027 0 000-.74l4.94-2.47C13.456 7.68 14.19 8 15 8z" /></svg>
+                            Share
+                        </button>
+                    </div>
+                 </div>
+            </div>
+        </main>
+        
+        <footer class="text-center mt-12 text-gray-500 fade-in" style="animation-delay: 0.6s;">
+            <p class="mt-2 text-sm">Copyright &copy; 2024 by Sudarshan</p>
+        </footer>
+    </div>
+
+    <script type="module">
+        // --- DOM Elements ---
+        const canvas = document.getElementById('meme-canvas');
+        const canvasWrapper = document.getElementById('canvas-wrapper');
+        const ctx = canvas.getContext('2d');
+        const notificationEl = document.getElementById('notification');
+        const promptInput = document.getElementById('prompt');
+        const generateBtn = document.getElementById('generate-btn');
+        const topTextInput = document.getElementById('top-text');
+        const bottomTextInput = document.getElementById('bottom-text');
+        const fontSizeInput = document.getElementById('font-size');
+        const fontSizeValue = document.getElementById('font-size-value');
+        const fontColorInput = document.getElementById('font-color');
+        const downloadBtn = document.getElementById('download-btn');
+        const shareBtn = document.getElementById('share-btn');
+        const templatesContainer = document.getElementById('templates');
+        const imageUploadInput = document.getElementById('image-upload');
+        const loader = document.getElementById('loader');
+
+        // --- API Key ---
+        // IMPORTANT: Paste your API key here.
+        // Get your key from Google AI Studio: https://aistudio.google.com/
+        const API_KEY = "AIzaSyBuxo8xzmdiFECV1BeFV19xqGyi1nb5e3I";
+
+        // --- State ---
+        let currentImage = new Image();
+        currentImage.crossOrigin = "anonymous";
+        let selectedTemplate = null;
+
+        // --- Meme Templates (Expanded List) ---
+        const templates = [
+            { id: 'distracted', name: 'Distracted Boyfriend', url: 'https://placehold.co/800x533/EFEFEF/333?text=Distracted+Boyfriend' },
+            { id: 'drake', name: 'Drake Hotline Bling', url: 'https://placehold.co/800x800/EFEFEF/333?text=Drake+Hotline+Bling' },
+            { id: 'disaster-girl', name: 'Disaster Girl', url: 'https://placehold.co/800x600/EFEFEF/333?text=Disaster+Girl' },
+            { id: 'bernie', name: 'Bernie Sanders Mittens', url: 'https://placehold.co/800x533/EFEFEF/333?text=Bernie+Mittens' },
+            { id: 'cat-yell', name: 'Woman Yelling at Cat', url: 'https://placehold.co/800x450/EFEFEF/333?text=Woman+Yelling+at+Cat' },
+            { id: 'this-is-fine', name: 'This is Fine Dog', url: 'https://placehold.co/800x450/EFEFEF/333?text=This+is+Fine' },
+            { id: 'two-buttons', name: 'Two Buttons', url: 'https://placehold.co/800x600/EFEFEF/333?text=Two+Buttons' },
+            { id: 'expanding-brain', name: 'Expanding Brain', url: 'https://placehold.co/800x850/EFEFEF/333?text=Expanding+Brain' }
+        ];
+        
+        // --- UI Functions ---
+        function showNotification(message, type = 'error') {
+            notificationEl.textContent = message;
+            notificationEl.className = '';
+            notificationEl.classList.add(type, 'show');
+            setTimeout(() => {
+                notificationEl.classList.remove('show');
+            }, 5000);
+        }
+
+        // --- Canvas Functions ---
+        function drawMeme() {
+            if (!currentImage.src || !currentImage.complete || currentImage.naturalWidth === 0) return;
+            
+            const aspectRatio = currentImage.naturalWidth / currentImage.naturalHeight;
+            canvas.width = 800;
+            canvas.height = 800 / aspectRatio;
+
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            ctx.drawImage(currentImage, 0, 0, canvas.width, canvas.height);
+
+            const topText = topTextInput.value.toUpperCase();
+            const bottomText = bottomTextInput.value.toUpperCase();
+            const fontSize = fontSizeInput.value;
+            const fontColor = fontColorInput.value;
+
+            ctx.fillStyle = fontColor;
+            ctx.strokeStyle = 'black';
+            ctx.lineWidth = fontSize / 20;
+            ctx.font = `bold ${fontSize}px Impact, sans-serif`;
+            ctx.textAlign = 'center';
+
+            ctx.textBaseline = 'top';
+            wrapText(topText, canvas.width / 2, 20, canvas.width - 40, parseInt(fontSize, 10) + 10);
+
+            ctx.textBaseline = 'bottom';
+            wrapText(bottomText, canvas.width / 2, canvas.height - 20, canvas.width - 40, parseInt(fontSize, 10) + 10);
+        }
+        
+        function wrapText(text, x, y, maxWidth, lineHeight) {
+            const words = text.split(' ');
+            let line = '';
+            const lines = [];
+            for (let n = 0; n < words.length; n++) {
+                const testLine = line + words[n] + ' ';
+                const metrics = ctx.measureText(testLine);
+                if (metrics.width > maxWidth && n > 0) {
+                    lines.push(line);
+                    line = words[n] + ' ';
+                } else {
+                    line = testLine;
+                }
+            }
+            lines.push(line);
+
+            if (ctx.textBaseline === 'bottom') {
+                y -= (lines.length - 1) * lineHeight;
+            }
+
+            lines.forEach((l, i) => {
+                const drawY = y + (i * lineHeight);
+                ctx.strokeText(l.trim(), x, drawY);
+                ctx.fillText(l.trim(), x, drawY);
+            });
+        }
+
+        // --- AI & Template Functions ---
+        async function generateAiMeme() {
+            if (API_KEY === "YOUR_API_KEY_HERE") {
+                showNotification("Please add your API key to the code first.");
+                return;
+            }
+            const userPrompt = promptInput.value;
+            if (!userPrompt) {
+                showNotification("Please enter a meme idea first!");
+                return;
+            }
+            loader.style.display = 'block';
+            generateBtn.disabled = true;
+            try {
+                const captionPrompt = `Generate a short, witty meme caption for the top or bottom of an image, based on this theme: "${userPrompt}". Respond with only the caption text.`;
+                const caption = await generateText(captionPrompt);
+                topTextInput.value = caption;
+
+                const imagePrompt = `Create a high-quality, funny, and clear photograph that visually represents the concept: "${userPrompt}". The image should be simple, iconic, and suitable for a meme. Do not include any text or words in the image.`;
+                const imageUrl = await generateImage(imagePrompt);
+                
+                currentImage.src = imageUrl;
+            } catch (error) {
+                console.error("AI Generation Error:", error);
+                showNotification(error.message || "Sorry, something went wrong with the AI. Please try again.");
+            } finally {
+                loader.style.display = 'none';
+                generateBtn.disabled = false;
+            }
+        }
+
+        async function generateText(prompt) {
+            const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-05-20:generateContent?key=${API_KEY}`;
+            const payload = { contents: [{ parts: [{ text: prompt }] }] };
+            const response = await fetch(apiUrl, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) });
+            if (!response.ok) throw new Error(`API Error: ${response.statusText}`);
+            const result = await response.json();
+            if (result.candidates && result.candidates.length > 0) {
+                return result.candidates[0].content.parts[0].text.trim();
+            }
+            throw new Error("Text generation failed.");
+        }
+
+        async function generateImage(prompt) {
+            const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash-preview-image-generation:generateContent?key=${API_KEY}`;
+            const payload = {
+                contents: [{
+                    parts: [{ text: prompt }]
+                }],
+                generationConfig: {
+                    responseModalities: ['IMAGE', 'TEXT']
+                },
+            };
+            const response = await fetch(apiUrl, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) });
+            if (!response.ok) {
+                const errorBody = await response.text();
+                console.error("API Error Response:", errorBody);
+                throw new Error(`API Error: ${response.statusText}`);
+            }
+            const result = await response.json();
+            const base64Data = result?.candidates?.[0]?.content?.parts?.find(p => p.inlineData)?.inlineData?.data;
+            if (base64Data) {
+                return `data:image/png;base64,${base64Data}`;
+            } else {
+                console.error("Image Generation Failed. API Response:", JSON.stringify(result, null, 2));
+                if (result.promptFeedback && result.promptFeedback.blockReason) {
+                    throw new Error(`Image generation blocked. Reason: ${result.promptFeedback.blockReason}. Please try a different prompt.`);
+                }
+                throw new Error("No image was generated by the API. The prompt may be too complex or there might be a temporary API issue.");
+            }
+        }
+
+        function loadTemplates() {
+            templates.forEach(template => {
+                const img = document.createElement('img');
+                img.src = template.url;
+                img.alt = template.name;
+                img.title = template.name;
+                img.className = 'template-img w-full h-auto object-cover';
+                img.dataset.id = template.id;
+                img.onclick = () => selectTemplate(template);
+                templatesContainer.appendChild(img);
+            });
+        }
+        
+        function selectTemplate(template) {
+            deselectTemplates();
+            document.querySelector(`.template-img[data-id="${template.id}"]`).classList.add('selected');
+            selectedTemplate = template.id;
+            currentImage.src = template.url;
+        }
+
+        function selectRandomTemplate() {
+            const randomIndex = Math.floor(Math.random() * templates.length);
+            selectTemplate(templates[randomIndex]);
+        }
+
+        function deselectTemplates() {
+            document.querySelectorAll('.template-img').forEach(el => el.classList.remove('selected'));
+            selectedTemplate = null;
+        }
+
+        // --- Event Listeners ---
+        currentImage.onload = () => {
+            drawMeme();
+        };
+        currentImage.onerror = () => {
+            showNotification("The selected image could not be loaded. Please try another one.");
+            loader.style.display = 'none';
+            generateBtn.disabled = false;
+        };
+        
+        generateBtn.addEventListener('click', generateAiMeme);
+        
+        imageUploadInput.addEventListener('change', (event) => {
+            const file = event.target.files[0];
+            if (file) {
+                deselectTemplates();
+                currentImage.src = URL.createObjectURL(file);
+            }
+        });
+
+        [topTextInput, bottomTextInput, fontColorInput].forEach(el => el.addEventListener('input', drawMeme));
+        fontSizeInput.addEventListener('input', () => {
+            fontSizeValue.textContent = fontSizeInput.value;
+            drawMeme();
+        });
+
+        downloadBtn.addEventListener('click', () => {
+            const link = document.createElement('a');
+            link.download = 'meme.png';
+            link.href = canvas.toDataURL('image/png');
+            link.click();
+        });
+
+        shareBtn.addEventListener('click', () => {
+            if (navigator.share && canvas.toBlob) {
+                canvas.toBlob(blob => {
+                    navigator.share({
+                        title: 'My Remote Work Meme',
+                        text: 'Check out this meme I made!',
+                        files: [new File([blob], 'meme.png', { type: 'image/png' })],
+                    }).catch(err => console.error("Share failed:", err.message));
+                }, 'image/png');
+            } else {
+                showNotification("Web Share API not supported. Try downloading the image!");
+            }
+        });
+
+        // Interactive Tilt Effect Listener
+        canvasWrapper.addEventListener('mousemove', (e) => {
+            const rect = canvasWrapper.getBoundingClientRect();
+            const x = e.clientX - rect.left;
+            const y = e.clientY - rect.top;
+            const { width, height } = rect;
+            const rotateX = (y / height - 0.5) * -15; // -7.5 to 7.5 degrees
+            const rotateY = (x / width - 0.5) * 15;   // -7.5 to 7.5 degrees
+            
+            canvas.style.transform = `rotateX(${rotateX}deg) rotateY(${rotateY}deg) scale(1.05)`;
+        });
+
+        canvasWrapper.addEventListener('mouseleave', () => {
+            canvas.style.transform = 'rotateX(0deg) rotateY(0deg) scale(1)';
+        });
+
+        // --- Initial Load ---
+        window.onload = () => {
+            loadTemplates();
+            if (templates.length > 0) {
+                selectTemplate(templates[0]);
+            }
+        };
+    </script>
+</body>
+</html>
